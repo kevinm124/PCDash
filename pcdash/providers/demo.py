@@ -36,7 +36,10 @@ class DemoProvider(DataProvider):
         return [CPU_SPEC, RAM_SPEC, GPU_SPEC, VRAM_SPEC, drive_spec("C"), drive_spec("D")]
 
     def poll(self) -> dict[str, Reading]:
-        t = time.monotonic() - self._start
+        return self.poll_at(time.monotonic() - self._start)
+
+    def poll_at(self, t: float) -> dict[str, Reading]:
+        """Readings at ``t`` seconds into the demo (used for the GIF too)."""
         cpu = _wave(t, 55, 42, 14) + 4 * math.sin(t * 1.9)
         ram = _wave(t, 72, 18, 23, 1.0)
         gpu = _wave(t, 50, 49, 11, 2.0)

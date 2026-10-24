@@ -4,11 +4,15 @@ A car-dashboard overlay for your Windows PC: live system stats drawn as
 tachometers, dials and fuel gauges, floating on your desktop in a transparent,
 always-on-top window.
 
-![Sporty style](docs/screenshots/sporty.png)
+![PCDash in action, Sporty style](docs/screenshots/demo-sporty.gif)
 
-| Retro | Futuristic |
-| --- | --- |
-| ![Retro style](docs/screenshots/retro.png) | ![Futuristic style](docs/screenshots/futuristic.png) |
+![PCDash in action, Futuristic style](docs/screenshots/demo-futuristic.gif)
+
+### Styles
+
+| Sporty | Retro | Futuristic |
+| --- | --- | --- |
+| ![Sporty style](docs/screenshots/sporty.png) | ![Retro style](docs/screenshots/retro.png) | ![Futuristic style](docs/screenshots/futuristic.png) |
 
 ## Features
 
@@ -34,6 +38,10 @@ always-on-top window.
   | Grid | Single gauge |
   | --- | --- |
   | ![Grid layout](docs/screenshots/layout-grid.png) | ![Single layout](docs/screenshots/layout-single.png) |
+
+  Row:
+
+  ![Row layout](docs/screenshots/layout-row.png)
 
 - Frameless, transparent, always-on-top window you can drag anywhere
 - **Click-through** mode so clicks go to whatever is underneath, toggled with
@@ -103,6 +111,12 @@ PCDash lives in the system tray (bottom-right; it may be hidden under the
 While click-through is on, the overlay ignores the mouse completely. Use the
 hotkey or the tray menu to turn it off again.
 
+### Settings window
+
+Tray menu → **Settings…**. Every change applies immediately.
+
+![Settings window](docs/screenshots/settings.png)
+
 ### Settings file
 
 Settings are saved automatically to `%APPDATA%\PCDash\config.json`. Most
@@ -138,11 +152,17 @@ Delete the file to reset everything to defaults. A log is written next to it
 The images in this README are generated, so they look the same on any PC:
 
 ```bash
+.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+```
+
+```bash
 .venv\Scripts\python.exe tools\make_screenshots.py
 ```
 
-This renders every style with fixed demo values into `docs/screenshots/`.
-Run it again after changing a style, and commit the updated PNGs.
+This renders every style and layout with demo values, the Settings window,
+and the animated GIFs into `docs/screenshots/` (the GIFs need Pillow, which
+`requirements-dev.txt` installs). Run it again after changing a style, and
+commit the updated images.
 
 To capture the real overlay on your own desktop instead:
 
