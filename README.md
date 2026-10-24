@@ -4,8 +4,8 @@ A car-dashboard overlay for your Windows PC: live system stats drawn as
 tachometers and dials, floating on your desktop in a transparent,
 always-on-top window.
 
-> **Status:** work in progress. Milestone 2 is done: CPU, RAM, GPU, VRAM and
-> per-drive free-space gauges with live data.
+> **Status:** work in progress. Milestone 3 is done: three gauge styles,
+> switchable at runtime.
 
 ## Features
 
@@ -16,6 +16,12 @@ always-on-top window.
   - AMD / Intel: read from Windows performance counters, the same source
     Task Manager uses
 - **Disk free space** per fixed drive (C:, D:, …) as fuel gauges, E to F
+- Three styles, switchable while running (right-click → Style):
+  - **Sporty**: dark face, red needle and redline, sharp DIN-style numbers
+  - **Retro**: cream face, black serif numbers, chrome bezel, thin needle,
+    amber jewel warning lamps
+  - **Futuristic**: EV-style digital cluster with glowing segmented neon arcs,
+    big digital numbers, no needle; drives shown as battery bars
 - Needles that ease smoothly toward each new value instead of jumping
 - Warning lamps: CPU ≥ 90%, RAM ≥ 85%, GPU ≥ 95%, VRAM ≥ 90%, drive ≤ 10% free
 - Frameless, transparent, always-on-top window
@@ -23,8 +29,8 @@ always-on-top window.
   background thread, needles animate only while moving, and each gauge's
   static face is cached as an image
 
-Planned: RAM, GPU/VRAM and disk gauges, three switchable styles (Sporty,
-Retro, Futuristic), click-through hotkey, tray icon and saved settings.
+Planned: click-through hotkey, tray icon, opacity/scale, layouts and saved
+settings.
 
 ## Requirements
 
@@ -47,7 +53,7 @@ py -3.13 -m venv .venv
 ```
 
 - **Left-drag** the gauge to move it.
-- **Right-click** it for the menu (Quit).
+- **Right-click** it for the menu (Style, Quit).
 
 ## Project layout
 
@@ -66,7 +72,20 @@ pcdash/
     styles/
       base.py                   GaugeStyle interface + geometry helpers
       sporty.py                 Sporty style (dial + fuel gauge)
+      retro.py                  Retro style
+      futuristic.py             Futuristic style
 ```
+
+### Adding a style
+
+1. Create `pcdash/gauges/styles/mystyle.py` with a `GaugeStyle` subclass that
+   sets `key` and `name` and implements `paint_dial_background`,
+   `paint_dial_foreground`, `paint_fuel_background` and `paint_fuel_foreground`.
+   Background methods draw the static parts (they are cached); foreground
+   methods draw the needle/value every frame.
+2. Add the class to `STYLES` in `pcdash/gauges/styles/__init__.py`.
+
+It then shows up in the Style menu automatically.
 
 Data sources and drawing are kept separate: a `DataProvider` only reports
 numbers (`MetricSpec` + `Reading`), and a `GaugeStyle` only draws them, so

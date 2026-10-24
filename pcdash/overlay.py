@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QCloseEvent, QContextMenuEvent, QMouseEvent
+from PySide6.QtGui import QActionGroup, QCloseEvent, QContextMenuEvent, QMouseEvent
 from PySide6.QtWidgets import QApplication, QGridLayout, QHBoxLayout, QMenu, QWidget
 
 from .gauges import GaugeWidget
-from .gauges.styles import GaugeStyle
+from .gauges.styles import STYLES, GaugeStyle, create_style
 from .providers import DataProvider, Reading
 from .providers.base import FUEL
 from .stats_poller import StatsPoller
@@ -29,6 +29,7 @@ class OverlayWindow(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setWindowTitle("PCDash")
 
+        self._style = style
         self._gauges: dict[str, GaugeWidget] = {}
         self._build_dashboard(provider, style)
 
@@ -68,6 +69,18 @@ class OverlayWindow(QWidget):
         self._gauges[spec.key] = gauge
         return gauge
 
+    @property
+    def style_key(self) -> str:
+        return self._style.key
+
+    def set_style(self, key: str) -> None:
+        """Switch every gauge to another style at runtime."""
+        if key == self._style.key:
+            return
+        self._style = create_style(key)
+        for gauge in self._gauges.values():
+            gauge.set_style(self._style)
+
     def _apply_readings(self, readings: dict[str, Reading]) -> None:
         for key, reading in readings.items():
             gauge = self._gauges.get(key)
@@ -90,5 +103,14 @@ class OverlayWindow(QWidget):
 
     def contextMenuEvent(self, event: QContextMenuEvent) -> None:
         menu = QMenu(self)
+        styles = menu.addMenu("Style")
+        group = QActionGroup(styles)
+        for key, cls in STYLES.items():
+            action = styles.addAction(cls.name)
+            action.setCheckable(True)
+            action.setChecked(key == self._style.key)
+            action.triggered.connect(lambda _=False, k=key: self.set_style(k))
+            group.addAction(action)
+        menu.addSeparator()
         menu.addAction("Quit", QApplication.quit)
         menu.exec(event.globalPos())
