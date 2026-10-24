@@ -155,12 +155,14 @@ class OverlayWindow(QWidget):
 
     # --- data --------------------------------------------------------------
 
-    def apply_readings(self, readings: dict[str, Reading]) -> None:
+    def apply_readings(self, readings: dict[str, Reading], snap: bool = False) -> None:
         self._last.update(readings)
+        if not self.isVisible():
+            return      # no animation work while hidden; showEvent catches up
         for key, reading in readings.items():
             gauge = self._gauges.get(key)
             if gauge is not None:
-                gauge.set_reading(reading)
+                gauge.set_reading(reading, snap)
 
     # --- events ------------------------------------------------------------
 
@@ -168,6 +170,9 @@ class OverlayWindow(QWidget):
         super().showEvent(event)
         # Re-apply in case the native window style was reset.
         win32.set_click_through(int(self.winId()), self._click_through)
+        for key, reading in self._last.items():
+            if key in self._gauges:
+                self._gauges[key].set_reading(reading, snap=True)
 
     def moveEvent(self, event: QMoveEvent) -> None:
         super().moveEvent(event)

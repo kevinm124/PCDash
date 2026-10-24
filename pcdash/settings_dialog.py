@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog,
                                QHBoxLayout, QLabel, QSlider, QVBoxLayout,
                                QWidget)
 
+from . import __version__
 from .config import CONFIG_PATH, LAYOUTS, OPACITY_RANGE, SCALE_RANGE
 from .gauges.styles import STYLES
 
@@ -20,7 +21,7 @@ if TYPE_CHECKING:
 class SettingsDialog(QDialog):
     def __init__(self, controller: Controller) -> None:
         super().__init__(None, Qt.WindowType.WindowStaysOnTopHint)
-        self.setWindowTitle("PCDash settings")
+        self.setWindowTitle(f"PCDash {__version__} settings")
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         self._ctl = controller
         s = controller.settings

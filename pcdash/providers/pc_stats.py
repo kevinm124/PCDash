@@ -9,6 +9,17 @@ from .gpu import GpuBackend, detect_gpu
 
 GIB = 1024 ** 3
 
+CPU_SPEC = MetricSpec("cpu", "CPU", red_zone=(90, 100), warn_above=90)
+RAM_SPEC = MetricSpec("ram", "RAM", red_zone=(85, 100), warn_above=85)
+GPU_SPEC = MetricSpec("gpu", "GPU", red_zone=(90, 100), warn_above=95)
+VRAM_SPEC = MetricSpec("vram", "VRAM", red_zone=(90, 100), warn_above=90)
+
+
+def drive_spec(letter: str) -> MetricSpec:
+    """Fuel gauge for a drive's free space; warns at 10% free or less."""
+    return MetricSpec(f"disk:{letter}", f"{letter}:", kind=FUEL, red_zone=(0, 10),
+                      warn_below=10, major_ticks=4, minor_ticks=2)
+
 
 def _gb(n: float) -> str:
     return f"{n / GIB:.1f}"
@@ -28,22 +39,20 @@ class PCStatsProvider(DataProvider):
                         if p.fstype and "fixed" in p.opts]
 
     @staticmethod
-    def _drive_key(mountpoint: str) -> str:
-        return "disk:" + mountpoint.rstrip("\\:/")
+    def _drive_letter(mountpoint: str) -> str:
+        return mountpoint.rstrip("\\:/")
+
+    @classmethod
+    def _drive_key(cls, mountpoint: str) -> str:
+        return "disk:" + cls._drive_letter(mountpoint)
 
     def metrics(self) -> list[MetricSpec]:
-        specs = [
-            MetricSpec("cpu", "CPU", red_zone=(90, 100), warn_above=90),
-            MetricSpec("ram", "RAM", red_zone=(85, 100), warn_above=85),
-        ]
+        specs = [CPU_SPEC, RAM_SPEC]
         if self._gpu is not None:
-            specs.append(MetricSpec("gpu", "GPU", red_zone=(90, 100), warn_above=95))
+            specs.append(GPU_SPEC)
             if self._gpu.vram_total:
-                specs.append(MetricSpec("vram", "VRAM", red_zone=(90, 100), warn_above=90))
-        for mount in self._drives:
-            key = self._drive_key(mount)
-            specs.append(MetricSpec(key, key[5:] + ":", kind=FUEL, red_zone=(0, 10),
-                                    warn_below=10, major_ticks=4, minor_ticks=2))
+                specs.append(VRAM_SPEC)
+        specs += [drive_spec(self._drive_letter(m)) for m in self._drives]
         return specs
 
     def poll(self) -> dict[str, Reading]:

@@ -8,11 +8,13 @@ from PySide6.QtCore import QCoreApplication, QObject, QPoint, QTimer
 from PySide6.QtGui import QAction, QActionGroup, QGuiApplication
 from PySide6.QtWidgets import QMenu, QSystemTrayIcon
 
+from . import __version__, autostart
 from .config import LAYOUTS, OPACITY_RANGE, SCALE_RANGE, Settings
 from .gauges.styles import STYLES
 from .icon import app_icon
 from .overlay import OverlayWindow
-from .providers import DataProvider
+from .providers import DataProvider, Reading
+from .providers.base import FUEL
 from .settings_dialog import SettingsDialog
 from .stats_poller import StatsPoller
 from .win32 import GlobalHotkeys
@@ -60,6 +62,7 @@ class Controller(QObject):
         # Live data.
         self.poller = StatsPoller(provider, settings.poll_ms, self)
         self.poller.readings.connect(self.overlay.apply_readings)
+        self.poller.readings.connect(self._update_tooltip)
         self.poller.start()
 
         # Tray icon + shared menu (also shown on right-click of the overlay).
@@ -67,7 +70,7 @@ class Controller(QObject):
         self._build_menu()
         self.menu.aboutToShow.connect(self._refresh_menu)
         self.tray = QSystemTrayIcon(app_icon(), self)
-        self.tray.setToolTip("PCDash")
+        self.tray.setToolTip(f"PCDash {__version__}")
         self.tray.setContextMenu(self.menu)
         self.tray.activated.connect(self._on_tray_activated)
         self.tray.show()
@@ -89,7 +92,10 @@ class Controller(QObject):
         if settings.click_through:
             self._notify_click_through()
 
-        QGuiApplication.instance().aboutToQuit.connect(self.shutdown)
+        app = QGuiApplication.instance()
+        app.aboutToQuit.connect(self.shutdown)
+        # Unplugging a monitor can leave the overlay off-screen: bring it back.
+        app.screenRemoved.connect(lambda _: QTimer.singleShot(500, self._ensure_on_screen))
 
     # --- helpers -----------------------------------------------------------
 
@@ -120,6 +126,17 @@ class Controller(QObject):
                 return
         area = QGuiApplication.primaryScreen().availableGeometry()
         self.overlay.move(area.right() - self.overlay.width() - 20, area.top() + 20)
+
+    def _ensure_on_screen(self) -> None:
+        pos = self.overlay.pos()
+        if QGuiApplication.screenAt(QPoint(pos.x() + 20, pos.y() + 20)) is None:
+            self.settings.x = self.settings.y = None
+            self._place_window()
+
+    def _update_tooltip(self, readings: dict[str, Reading]) -> None:
+        parts = [f"{spec.label} {readings[spec.key].value:.0f}%"
+                 for spec in self.specs if spec.kind != FUEL and spec.key in readings]
+        self.tray.setToolTip(f"PCDash - {', '.join(parts)}"[:127])
 
     def _on_moved(self, pos: QPoint) -> None:
         self.settings.x, self.settings.y = pos.x(), pos.y()
@@ -193,6 +210,10 @@ class Controller(QObject):
         self.overlay.set_scale(self.settings.scale)
         self._save_later()
 
+    def set_autostart(self, enabled: bool) -> None:
+        if not autostart.set_enabled(enabled):
+            self._notify("Could not change the Windows startup setting.")
+
     def open_settings(self) -> None:
         if self._dialog is None:
             self._dialog = SettingsDialog(self)
@@ -249,6 +270,9 @@ class Controller(QObject):
             self._gauge_actions[spec.key] = action
 
         m.addSeparator()
+        self._act_autostart = m.addAction("Start with Windows")
+        self._act_autostart.setCheckable(True)
+        self._act_autostart.triggered.connect(self.set_autostart)
         m.addAction("Settings…", self.open_settings)
         m.addSeparator()
         m.addAction("Quit PCDash", self.quit)
@@ -269,6 +293,7 @@ class Controller(QObject):
         s = self.settings
         self._act_show.setText("Hide overlay" if self.overlay.isVisible() else "Show overlay")
         self._act_click.setChecked(s.click_through)
+        self._act_autostart.setChecked(autostart.is_enabled())
         for actions, current in ((self._style_actions, s.style),
                                  (self._layout_actions, s.layout),
                                  (self._main_actions, s.main_gauge)):
