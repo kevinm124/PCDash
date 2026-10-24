@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import sys
 
 from PySide6.QtCore import Qt
@@ -14,6 +15,7 @@ from .providers.pc_stats import PCStatsProvider
 
 
 def main(argv: list[str] | None = None) -> int:
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     # Use exact Windows scaling (e.g. 125%) instead of rounding, for crisp gauges.
     QGuiApplication.setHighDpiScaleFactorRoundingPolicy(
         Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
@@ -27,4 +29,5 @@ def main(argv: list[str] | None = None) -> int:
     try:
         return app.exec()
     finally:
+        window.close()        # stops the polling thread before the provider closes
         provider.close()

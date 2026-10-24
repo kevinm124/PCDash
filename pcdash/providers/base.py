@@ -10,6 +10,9 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
+DIAL = "dial"   # round tachometer-style gauge
+FUEL = "fuel"   # fuel-gauge style: short arc from E to F
+
 
 @dataclass(frozen=True)
 class MetricSpec:
@@ -20,10 +23,11 @@ class MetricSpec:
     unit: str = "%"
     minimum: float = 0.0
     maximum: float = 100.0
-    redline: float | None = None      # start of the red zone (to maximum)
+    kind: str = DIAL                  # DIAL or FUEL; styles draw each differently
+    red_zone: tuple[float, float] | None = None   # value range painted red
     warn_above: float | None = None   # warning lamp on when value >= this
     warn_below: float | None = None   # warning lamp on when value <= this
-    major_ticks: int = 10             # number of labelled divisions
+    major_ticks: int = 10             # number of major divisions
     minor_ticks: int = 5              # minor divisions per major division
 
     def clamp(self, value: float) -> float:
@@ -32,6 +36,12 @@ class MetricSpec:
     def fraction(self, value: float) -> float:
         span = self.maximum - self.minimum
         return 0.0 if span <= 0 else (self.clamp(value) - self.minimum) / span
+
+    def in_red_zone(self, value: float) -> bool:
+        if self.red_zone is None:
+            return False
+        low, high = self.red_zone
+        return low - 1e-9 <= value <= high + 1e-9
 
     def is_warning(self, value: float) -> bool:
         if self.warn_above is not None and value >= self.warn_above:
@@ -50,7 +60,11 @@ class Reading:
 
 
 class DataProvider(ABC):
-    """Source of live values for the gauges."""
+    """Source of live values for the gauges.
+
+    ``poll`` is called from a background thread, so it may take a few
+    milliseconds without stuttering the animation.
+    """
 
     name: str = "provider"
 
@@ -60,7 +74,7 @@ class DataProvider(ABC):
 
     @abstractmethod
     def poll(self) -> dict[str, Reading]:
-        """Return the latest reading for each metric key. Must be fast."""
+        """Return the latest reading for each metric key."""
 
     def close(self) -> None:
-        """Release any resources (sockets, driver handles)."""
+        """Release any resources (driver handles, counter queries)."""
