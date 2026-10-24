@@ -2,8 +2,7 @@
 
 A provider knows *what* to measure and *how* to read it, but nothing about how
 it is drawn. The overlay asks a provider which metrics it offers (``metrics``)
-and then calls ``poll`` on a timer to get fresh readings. A future BeamNG
-OutGauge provider implements the same interface with RPM, speed, gear, etc.
+and then calls ``poll`` on a timer to get fresh readings.
 """
 
 from __future__ import annotations

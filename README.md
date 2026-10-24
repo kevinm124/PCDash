@@ -1,7 +1,7 @@
 # PCDash
 
 A car-dashboard overlay for your Windows PC: live system stats drawn as
-tachometers and dials, sitting on top of your game in a transparent,
+tachometers and dials, floating on your desktop in a transparent,
 always-on-top window.
 
 > **Status:** work in progress. Milestone 1 is done: one CPU tachometer in an
@@ -17,8 +17,7 @@ always-on-top window.
   it moves, and each gauge's static face is cached as an image
 
 Planned: RAM, GPU/VRAM and disk gauges, three switchable styles (Sporty,
-Retro, Futuristic), click-through hotkey, tray icon, saved settings, and a
-BeamNG.drive OutGauge telemetry mode.
+Retro, Futuristic), click-through hotkey, tray icon and saved settings.
 
 ## Requirements
 
@@ -43,10 +42,6 @@ py -3.13 -m venv .venv
 - **Left-drag** the gauge to move it.
 - **Right-click** it for the menu (Quit).
 
-> **Games:** always-on-top windows can't draw over games running in
-> *exclusive fullscreen*. Set the game to **borderless / windowed fullscreen**
-> to see the overlay.
-
 ## Project layout
 
 ```
@@ -65,9 +60,8 @@ pcdash/
 ```
 
 Data sources and drawing are kept separate: a `DataProvider` only reports
-numbers (`MetricSpec` + `Reading`), and a `GaugeStyle` only draws them. A
-BeamNG telemetry provider can later replace the PC stats provider without
-touching any drawing code.
+numbers (`MetricSpec` + `Reading`), and a `GaugeStyle` only draws them, so
+new stats or new styles can be added without touching the other side.
 
 ## License
 
