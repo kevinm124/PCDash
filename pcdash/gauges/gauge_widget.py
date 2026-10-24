@@ -14,8 +14,13 @@ from .styles.base import GaugeState, GaugeStyle
 
 
 class GaugeWidget(QWidget):
-    FRAME_MS = 33          # ~30 fps while the needle is moving
+    FRAME_MS = 33          # ~30 fps while the needle is moving (see set_fps)
     SMOOTHING = 6.0        # 1/s; higher = snappier needle
+
+    @classmethod
+    def set_fps(cls, fps: int) -> None:
+        """Animation frame rate for gauges created afterwards."""
+        cls.FRAME_MS = max(1, round(1000 / fps))
 
     def __init__(self, spec: MetricSpec, style: GaugeStyle,
                  parent: QWidget | None = None) -> None:
@@ -32,7 +37,7 @@ class GaugeWidget(QWidget):
         self._timer.setInterval(self.FRAME_MS)
         self._timer.timeout.connect(self._tick)
 
-        self.setMinimumSize(80, 80)
+        self.setMinimumSize(40, 40)
 
     # --- public API --------------------------------------------------------
 
@@ -45,8 +50,14 @@ class GaugeWidget(QWidget):
         self._cache = None
         self.update()
 
-    def set_reading(self, reading: Reading) -> None:
+    def set_reading(self, reading: Reading, snap: bool = False) -> None:
+        """Move toward ``reading``; ``snap`` jumps there without animating."""
         self._target = self._spec.clamp(reading.value)
+        if snap:
+            self._shown = self._target
+            self._detail = reading.detail
+            self.update()
+            return
         if reading.detail != self._detail:
             self._detail = reading.detail
             self.update()

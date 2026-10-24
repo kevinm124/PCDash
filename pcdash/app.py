@@ -1,16 +1,17 @@
-"""Application setup: create the provider, the style and the overlay window."""
+"""Application setup: load settings, create the provider and the controller."""
 
 from __future__ import annotations
 
 import logging
 import sys
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QLockFile, Qt
 from PySide6.QtGui import QGuiApplication
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QMessageBox
 
-from .gauges.styles import DEFAULT_STYLE, create_style
-from .overlay import OverlayWindow
+from .config import APP_DIR, Settings
+from .controller import Controller
+from .gauges import GaugeWidget
 from .providers.pc_stats import PCStatsProvider
 
 
@@ -22,12 +23,22 @@ def main(argv: list[str] | None = None) -> int:
     )
     app = QApplication(argv if argv is not None else sys.argv)
     app.setApplicationName("PCDash")
+    app.setQuitOnLastWindowClosed(False)      # lives in the tray
 
-    provider = PCStatsProvider()
-    window = OverlayWindow(provider, create_style(DEFAULT_STYLE))
-    window.show()
+    # Only one instance: a second one would fight over the hotkeys.
+    APP_DIR.mkdir(parents=True, exist_ok=True)
+    lock = QLockFile(str(APP_DIR / "pcdash.lock"))
+    if not lock.tryLock(100):
+        QMessageBox.information(None, "PCDash",
+                                "PCDash is already running - look for its tray icon.")
+        return 0
+
+    settings = Settings.load()
+    GaugeWidget.set_fps(settings.animation_fps)
+    provider = PCStatsProvider(settings.gpu_backend)
+    controller = Controller(settings, provider)
     try:
         return app.exec()
     finally:
-        window.close()        # stops the polling thread before the provider closes
-        provider.close()
+        controller.shutdown()
+        lock.unlock()
